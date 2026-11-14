@@ -70,10 +70,15 @@ import { request } from '@/api/client'
 type Row = Record<string, string | number | null>
 
 const ENDPOINT = '/api/benchmark'
-const columns = ["报告编号", "查询语句", "执行耗时", "扫描行数", "索引命中", "资源消耗", "优化建议", "分析时间"]
+const columns = ["报告编号", "查询语句", "执行耗时", "扫描行数", "索引命中", "资源消耗", "优化建议", "分析时间", "受影响表"]
 const actions = ["开始分析", "应用优化", "归档报告"]
 const statuses = ["草稿", "分析中", "已生成", "已优化"]
 const stats = [{"label": "性能报告总数", "value": 0}, {"label": "已生成报告", "value": 0}, {"label": "已优化报告", "value": 0}]
+
+function formatAffected(value: unknown): string {
+  if (!Array.isArray(value) || !value.length) return '—'
+  return (value as string[]).join('、')
+}
 
 const rows = ref<Row[]>([])
 const total = ref(0)
@@ -119,7 +124,10 @@ async function reload() {
       throw new Error('性能报告列表读取失败')
     }
     const payload = await response.json()
-    rows.value = payload.items ?? []
+    rows.value = (payload.items ?? []).map((row: Row) => ({
+      ...row,
+      受影响表: formatAffected(row['受影响表']),
+    }))
     total.value = payload.total ?? rows.value.length
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '查询性能分析列表读取失败'

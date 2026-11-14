@@ -70,10 +70,25 @@ import { request } from '@/api/client'
 type Row = Record<string, string | number | null>
 
 const ENDPOINT = '/api/score'
-const columns = ["报告编号", "评估范围", "存储健康分", "计算健康分", "质量健康分", "综合评分", "改进建议", "评估时间"]
+const columns = ["报告编号", "评估范围", "存储健康分", "计算健康分", "质量健康分", "综合评分", "改进建议", "评估时间", "字段结论"]
 const actions = ["开始评估", "公示报告", "归档报告"]
 const statuses = ["草稿", "评估中", "已生成", "已公示"]
 const stats = [{"label": "健康度报告总数", "value": 0}, {"label": "已生成报告", "value": 0}, {"label": "已公示报告", "value": 0}]
+
+type Conclusion = {
+  表名称: string
+  漂移字段: string
+  结论: string
+  最近偏差: string
+  样本数: number
+}
+
+function formatConclusions(value: unknown): string {
+  if (!Array.isArray(value) || !value.length) return '—'
+  return (value as Conclusion[])
+    .map((item) => `${item.表名称}·${item.漂移字段}:${item.结论}(${item.最近偏差}，样本${item.样本数})`)
+    .join('；')
+}
 
 const rows = ref<Row[]>([])
 const total = ref(0)
@@ -119,7 +134,10 @@ async function reload() {
       throw new Error('健康度报告列表读取失败')
     }
     const payload = await response.json()
-    rows.value = payload.items ?? []
+    rows.value = (payload.items ?? []).map((row: Row) => ({
+      ...row,
+      字段结论: formatConclusions(row['字段结论']),
+    }))
     total.value = payload.total ?? rows.value.length
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : '数仓健康度评估列表读取失败'
